@@ -1,0 +1,10 @@
+*.pyc
+events*
+__pycache__
+runs
+*.dot
+*.npz
+results
+data
+*.png
+*.history
