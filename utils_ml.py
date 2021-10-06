@@ -18,8 +18,10 @@ from sklearn import preprocessing
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.pipeline import make_pipeline, make_union, Pipeline
 from sklearn.dummy import DummyClassifier
-np.set_printoptions(edgeitems=30, linewidth=100000,
-                    formatter=dict(float=lambda x: "%.4f" % x))
+
+np.set_printoptions(
+    edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.4f" % x)
+)
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device('cpu')
 
@@ -31,19 +33,22 @@ def load_ndvi_as_df(filepath: str, years):
     df.replace(cfg.fill_value, np.nan, inplace=True)
     years = as_list(years)
     df = df.loc[df.year.isin(years)].reset_index(drop=True)
-    return(df)
+    return df
 
 
-def load_ndvi_as_numpy(filepath: str, years, balance_flag: int):
+def load_ndvi_as_numpy(
+    filepath: str, years: list, balance_flag: int = 0, synth_data: bool = True
+):
     """
     load NDVI univariate time series from csv file
     """
-    df = pd.read_csv(filepath, dtype={2: str, 8: str})
+    if synth_data:
+        df = pd.read_csv(filepath, index_col=None)
+    else:
+        df = pd.read_csv(filepath, dtype={2: str, 8: str})
+        df = df.loc[df.year.isin(years)].reset_index(drop=True)
 
     col_names = list(cfg.ts_vars.keys())
-
-    df = df.loc[df.year.isin(years)].reset_index(drop=True)
-
     # if balance flag is 1 then sequentially load data per year and balance it
     # this is like stratified sampling across years
     if balance_flag == 1:
@@ -109,8 +114,8 @@ def compute_average_ndvi():
     df = load_ndvi_as_df(filepath, cfg.years)
 
     ts_vars = list(cfg.ts_vars.keys())
-    df = df[['year', 'loss']+ts_vars]
-    df = df.groupby(['year', 'loss']).mean()
+    df = df[["year", "loss"] + ts_vars]
+    df = df.groupby(["year", "loss"]).mean()
     df = df.reset_index()
     return df
 
@@ -124,15 +129,13 @@ def create_param_grid(model_name):
         param_grid: list of all combinations of parameter values
     """
     if model_name == "lr":
-        param_grid = {"mdl__penalty": ["l2"],
-                      "mdl__C": [1, 10]}
+        param_grid = {"mdl__penalty": ["l2"], "mdl__C": [1, 10]}
 
     elif model_name == "dt":
         param_grid = {"mdl__max_depth": [5, 10, 50]}
 
     elif model_name == "rf":
-        param_grid = {'mdl__max_depth': [10],
-                      "mdl__n_estimators": [50]}
+        param_grid = {"mdl__max_depth": [10], "mdl__n_estimators": [50]}
 
     elif model_name == "mlp":
         param_grid = {"mdl__hidden_layer_sizes": [(10,), (5,)]}
@@ -186,9 +189,7 @@ def build_model_opt(model_name, random_state):
         mdl = DecisionTreeClassifier(max_depth=5, random_state=random_state)
     elif model_name == "mlp":
         mdl = MLPClassifier(
-            hidden_layer_sizes=(10,),
-            max_iter=500,
-            random_state=random_state,
+            hidden_layer_sizes=(10,), max_iter=500, random_state=random_state,
         )
     elif model_name == "rf":
         mdl = RandomForestClassifier(
@@ -228,8 +229,8 @@ def split_3fold(random_state, x, y, trp=0.6, vap=0.8):
     np.random.seed(random_state)
     idx = np.random.permutation(nimages)
     idx_tr = idx[: int(trp * nimages)]
-    idx_va = idx[int(trp * nimages): int(vap * nimages)]
-    idx_te = idx[int(vap * nimages):]
+    idx_va = idx[int(trp * nimages) : int(vap * nimages)]
+    idx_te = idx[int(vap * nimages) :]
 
     X_tr = x[idx_tr]
     y_tr = y[idx_tr]
@@ -304,9 +305,7 @@ def split_2fold(random_state, x, y, ids, trp=0.8):
     # X_te = x[idx_te]
     # y_te = y[idx_te]
     # ids_te = ids[idx_te]
-    sss = StratifiedShuffleSplit(
-        n_splits=1, train_size=trp, random_state=random_state
-    )
+    sss = StratifiedShuffleSplit(n_splits=1, train_size=trp, random_state=random_state)
 
     for idx_tr, idx_te in sss.split(x, y):
         X_tr, y_tr, ids_tr = x[idx_tr], y[idx_tr], ids[idx_tr]
