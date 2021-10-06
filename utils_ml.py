@@ -51,7 +51,7 @@ def load_ndvi_as_numpy(filepath: str, years, balance_flag: int):
             df_year = df.loc[df.year == year].reset_index(drop=True)
             x = df_year.loc[:, col_names].values
             y = df_year.loc[:, "loss"].values
-            z = df_year.loc[:, "orig_ID"].values
+            z = df_year.loc[:, "new_ID"].values
             if i == 0:
                 x, y, ids = balance_data(x, y, z)
             else:
@@ -62,7 +62,7 @@ def load_ndvi_as_numpy(filepath: str, years, balance_flag: int):
     else:  # bulk load
         x = df.loc[:, col_names].values
         y = df.loss.values
-        ids = df["orig_ID"].values
+        ids = df["new_ID"].values
 
     x[x == cfg.fill_value] = np.nan
     x, y, ids = shuffle(x, y, ids)
@@ -240,6 +240,49 @@ def split_3fold(random_state, x, y, trp=0.6, vap=0.8):
     X_va = x[idx_va]
     y_va = y[idx_va]
     return X_tr, y_tr, X_va, y_va, X_te, y_te
+
+
+def get500(x, y, ids):
+    n = x.shape[0]
+    # take 500 random examples of class 1 for test set
+    permuted_idx = np.random.permutation(n)
+    te_idx = permuted_idx[:500]
+    xte = x[te_idx]
+    yte = y[te_idx]
+    idste = ids[te_idx]
+
+    # remaining are training set
+    tr_idx = permuted_idx[500:]
+    xtr = x[tr_idx]
+    ytr = y[tr_idx]
+    idstr = ids[tr_idx]
+    return xtr, ytr, idstr, xte, yte, idste
+
+
+def split_for_map(x, y, ids, seed):
+    """
+    randomly split data for plotting
+    """
+    assert len(x) == len(y), print("Error: x and y length mismatch.")
+
+    np.random.seed(seed)
+
+    # split data by class
+    x1, y1, ids1 = x[y == 1], y[y == 1], ids[y == 1]
+    x0, y0, ids0 = x[y == 0], y[y == 0], ids[y == 0]
+
+    xtr1, ytr1, idstr1, xte1, yte1, idste1 = get500(x1, y1, ids1)
+    xtr0, ytr0, idstr0, xte0, yte0, idste0 = get500(x0, y0, ids0)
+
+    xtr = np.vstack([xtr0, xtr1])
+    ytr = np.hstack([ytr0, ytr1])
+    idstr = np.hstack([idstr0, idstr1])
+
+    xte = np.vstack([xte0, xte1])
+    yte = np.hstack([yte0, yte1])
+    idste = np.hstack([idste0, idste1])
+
+    return xtr, ytr, idstr, xte, yte, idste
 
 
 def split_2fold(random_state, x, y, ids, trp=0.8):
