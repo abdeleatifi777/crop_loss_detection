@@ -8,5 +8,4 @@ This code accompanies the paper **Crop loss identification at field parcel scale
 - 05_exp_btw_year_multiple.py: Between year classification experiment where model is trained on all data except the test year (section 3.3)
 - 06_results_ms_figures.py: replicate manuscript figures.
 - 06_results_ms_tables.py: Code to replicate manuscript tables.
-- ##hahaha
 
